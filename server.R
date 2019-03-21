@@ -3,19 +3,19 @@ library(shiny)
 library(tmap)
 library(leaflet)
 library(googleVis)
+library(DT)
 
 function(input, output, session){
     
   observe({
 
-      if (!grepl(input$year,input$start)){
-        print("start inside")
+      if(!grepl(input$year,input$start)){
         avail_dates <- collision %>% 
           filter(., year == input$year) %>% 
-          arrange(date) %>% 
-          .$date %>% unique()
-          
-        print(head(avail_dates))
+          .$date %>% 
+          unique() %>% 
+          sort()
+
         updateSelectizeInput(
           session, "start",
           choices = avail_dates,
@@ -25,10 +25,22 @@ function(input, output, session){
           updateSelectizeInput(
             session, "stop",
             choices = avail_dates,
-            selected = avail_dates[1])
+            selected = avail_dates[length(avail_dates)])
         
         
       }
+    if (input$start > input$stop ){
+      avail_dates <- collision %>% 
+        filter(., date > input$start & year == input$year) %>% 
+        .$date %>% 
+        unique() %>% 
+        sort()
+      updateSelectizeInput(
+        session, "stop",
+        choices = avail_dates,
+        selected = avail_dates[length(avail_dates)])
+      
+    }
   })
   
   filter_fct <- reactive({
@@ -57,8 +69,11 @@ function(input, output, session){
       mutate(., number=ifelse(is.na(number), 0 ,number))
     
     
-    tm <- tm_shape(new_df, name="collisions") + tm_polygons("number", title = "collisions")
-    tmap_leaflet(tm)
+    tm <- tm_shape(new_df, name="collision number in NYC neighborhood", simplify = 0.5) +
+      tm_polygons("number", title = "collisions") 
+      #tm_layout(basemaps = c('OpenStreetMap'))
+    
+    tmap_leaflet(tm) %>% leaflet::setView(lng=-73.9, lat=40.7, zoom=10)
   })
 
   output$hist <- renderPlot(
@@ -73,37 +88,37 @@ function(input, output, session){
       theme(text = element_text(size=14, colour = "Black")) +
       theme(axis.text.x = element_text(angle=60, hjust=1))
   )
-  
-  output$factor1 <- renderPlot(
-    filter_fct() %>% 
-      group_by(contributing.factor.vehicle.1) %>% 
-      summarise(number = n()) %>% 
-      top_n(20) %>% 
-      ggplot()+
-      geom_col(aes(x=reorder(contributing.factor.vehicle.1, -number),
-                   y=number), fill = "darkGreen")+
-      theme_bw() +
-      theme(text = element_text(size=16, colour="Black"))+
-      theme(axis.text.x = element_text(angle=60, hjust=1)) +
-      labs(title = "Contributing factor by vehicle 1",
-           y= "Number of Accidents",
-           x="")
-  )
-    output$factor2 <- renderPlot(
-      filter_fct() %>% 
-        group_by(contributing.factor.vehicle.2) %>% 
-        summarise(number = n()) %>% 
-        top_n(10) %>% 
-        ggplot()+
-        geom_col(aes(x=reorder(contributing.factor.vehicle.2, -number),
-                     y=number), fill = "darkGreen")+
-        theme_bw() +
-        theme(text = element_text(size=16, colour="Black")) +
-        theme(axis.text.x = element_text(angle=60, hjust=1))+
-        labs(title = "Contributing factor by vehicle 2",
-             y= "Number of Accidents",
-             x="")
-  )
+  output$table <- DT::renderDataTable({
+    df <- filter_fct() %>%
+      group_by(., contributing.factor.vehicle.1,
+               contributing.factor.vehicle.2) %>% 
+      summarise(n=n()) 
+    
+    df1<- df %>% 
+      group_by(., contributing.factor.vehicle.1) %>% 
+      summarise(number_1 = sum(n)) %>% 
+      rename(., contributing.factor = contributing.factor.vehicle.1)
+    
+    df2 <- df %>% 
+      group_by(., contributing.factor.vehicle.2) %>% 
+      summarise(number_2 = sum(n)) %>% 
+      rename(., contributing.factor = contributing.factor.vehicle.2)
+    
+    df <- df1 %>% left_join(., df2, id = contributing.factor ) %>% 
+      filter(., contributing.factor != "unspecified") %>% 
+      mutate(., number_2 = ifelse(is.na(number_2), 0, number_2)) %>% 
+      mutate(., number = number_1+ number_2, 
+             total = sum(number), 
+             percent = round((100 * number/total), 1)) %>% 
+      arrange(., desc(percent))
+    
+    df<- data.frame(cbind(1:nrow(df)), df$contributing.factor,
+                    df$percent)
+    
+    names(df)<-c("Rank", "Contributing Factor", "percent")
+      
+    datatable(df, rownames=FALSE )
+  })
     output$casualty <- renderGvis({
       
         filter_fct() %>% rename(., injured = number.of.persons.injured,
@@ -114,25 +129,76 @@ function(input, output, session){
           summarise(injured=sum(num_injured), killed=sum(num_killed)) %>% 
         top_n(20, injured) %>% 
         arrange(., injured) %>% 
-        
-        
-
         gvisBarChart(., 
                         options=list(
                           title = "Injured & Killed from Motor Collision",
                           width=600, height=400))
+      
+      
     })   
+    
+    output$time <- renderGvis({
+      
+      df <- filter_fct() %>% 
+#        mutate(hour = strftime(time, "%H")) %>% 
+        group_by(., hour) %>% 
+        summarise(Accidents=n()) %>% 
+        arrange(hour) 
+      hour_ticks <- c("00AM","01AM","02AM","03AM","04AM","05AM","06AM",
+                      "07AM","08AM","09AM","10AM","11AM","12PM","01PM",
+                      "02PM","03PM","04PM","05PM","06PM","07PM","08PM",
+                      "09PM","10PM","11PM")
+      df$hour <- hour_ticks[as.numeric(df$hour)+1]        
+      gvisColumnChart(df, 
+                        options = list(
+                          title = "Accidents by Time",
+                          width=600, height=300,
+                          hAxes="[{title:'Time', titleTextStyle: {color: 'black'}}]",
+                          vAxes="[{title:'Accidents', titleTextStyle: {color: 'black'}}]"
+                          )
+                        )
+      })   
+    output$date <- renderGvis({
+      
+      df <- filter_fct() %>% 
+        group_by(., day) %>% 
+        summarise(Accidents=n()) %>% 
+        arrange(day) 
+      
+      day_ticks <- c("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+      df$day <- day_ticks[as.numeric(df$day)]
+      
+      gvisColumnChart(df,
+                        options = list(
+                          title = "Accidents by Day of the Week",
+                          width=600, height=300,
+                          hAxes="[{title:'Day of the Week', titleTextStyle: {color: 'black'}}]",
+                          vAxes="[{title:'Accidents', titleTextStyle: {color: 'black'}}]"
+                        )
+        )
+    }) 
+    
+    output$month <- renderGvis({
+      
+      df <- filter_fct() %>% 
+        group_by(., month) %>% 
+        summarise(Accidents = n()) %>% 
+        arrange(month)   
+      
+      mon <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", 
+               "Aug", "Sep", "Oct", "Nov", "Dec")
+      df$month =  mon[as.numeric(df$month)]
+      
+        gvisColumnChart(df, xvar = "month", yvar = 'Accidents',
+                        options = list(
+                          title = "Accidents by the Month",
+                          width=600, height=300,
+                          hAxes="[{title:'Month', titleTextStyle: {color: 'black'}}]",
+                          vAxes="[{title:'Accidents', titleTextStyle: {color: 'black'}}]"
+                        )
+        )
+    })
     
     
 }
 
-#dat=data.frame(A=rpois(100, 20),
-#               B=rpois(100, 5),
-#               C=rpois(100, 50))
-#plot( 
-#  gvisHistogram(dat, options=list(
-#    legend="{ position: 'top', maxLines: 2 }",
-#    colors="['#5C3292', '#1A8763', '#871B47']",
-#    width=600),
-#    chartid="Histogram")
-#)

@@ -1,15 +1,15 @@
 library(tidyverse)
 library(rgdal)
-library(maptools)
-library(gpclib)
+#library(maptools)
+#library(gpclib)
 
 
 # downloading nyc neighborhood boundary dataset 
 
 
-download.file('http://data.beta.nyc//dataset/0ff93d2d-90ba-457c-9f7e-39e47bf2ac5f/resource/35dd04fb-81b3-479b-a074-a27a37888ce7/download/d085e2f8d0b54d4590b1e7d1f35594c1pediacitiesnycneighborhoods.geojson',
-             'nybb.geojson' 
-)
+#download.file('http://data.beta.nyc//dataset/0ff93d2d-90ba-457c-9f7e-39e47bf2ac5f/resource/35dd04fb-81b3-479b-a074-a27a37888ce7/download/d085e2f8d0b54d4590b1e7d1f35594c1pediacitiesnycneighborhoods.geojson',
+#             'nybb.geojson' 
+#)
 
 #loading neighborhood boundary dataset
 neighborhood_df <- readOGR(dsn="./nybb.geojson", layer="nybb") 
@@ -35,6 +35,7 @@ sps <- acc_loc
 coordinates(sps) <- ~long + lat
 proj4string(sps) <- proj4string(neighborhood_df)
 acc_loc <- cbind(acc_loc, over(sps, neighborhood_df))
+
 
 collision <- raw.df %>% 
   select(., 
@@ -65,7 +66,8 @@ collision <-bind_cols(collision, acc_loc) %>%
                   ifelse(contributing.factor.vehicle.1 == "80",
                          "unspecified",
                          contributing.factor.vehicle.1)
-           )))) %>% 
+           )))) %>%  
+ 
   mutate(., contributing.factor.vehicle.2 = tolower(
     ifelse(is.na(contributing.factor.vehicle.2),
            "unspecified",
@@ -75,9 +77,24 @@ collision <-bind_cols(collision, acc_loc) %>%
                          "unspecified",
                          contributing.factor.vehicle.2)
            )))) %>% 
+ 
   mutate(., year = format(as.Date(date), "%Y")) %>% 
   mutate(., month = format(as.Date(date), "%m")) %>% 
-  mutate(., day = format(as.Date(date), "%d"))
+  mutate(., day = format(as.Date(date), "%u")) %>% 
+  mutate(., hour = strftime(time, "%H"))
+
+initial_year <- collision %>% 
+  select(., year) %>% 
+  unique() %>% 
+  .$year
+
+initial_date <- collision %>% 
+  filter(., year==initial_year[1]) %>% 
+  select(., date) %>% 
+  unique() %>% 
+  .$date %>% 
+  sort()
+
 
 
 

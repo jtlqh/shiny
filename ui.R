@@ -1,29 +1,29 @@
 library(shiny)
 library(tmap)
 library(leaflet)
+library(tidyverse)
+library(DT)
+
 
 
 
 fluidPage(
-  titlePanel("NYC Auto Vehicle Collision Reports"),
+  titlePanel("NYC Motor Vehicle Collision Reports"),
   sidebarLayout(
     sidebarPanel(
       img(src="r.jpg",width="30%"),
       
       selectizeInput(inputId = "year",
                      label = "Select Year",
-                     choices = unique(
-                       format(as.Date(collision$date), "%Y"))),
+                     choices = initial_year),
       
       selectizeInput(inputId = "start",
                      label = "Seletect Date From",
-                      choices = unique(collision$date[collision$date > "2018-12-31"])),                   
-                     
-      
+                      choices = initial_date),
+                        
       selectizeInput(inputId = "stop",
                      label = "Select Date To",
-
-                     choices = unique(collision$date[collision$date > "2018-12-31"]))
+                     choices = initial_date[length(initial_date)])
       
     ),
     mainPanel(
@@ -35,15 +35,19 @@ fluidPage(
             plotOutput("hist"))
         ),
         tabPanel("By Cause", 
-                 fluidRow(
-                   plotOutput("factor1")),
-                 fluidRow(
-                   plotOutput("factor2"))
-        ),
+                   DT::dataTableOutput("table"))
+        ,
         tabPanel("By casauties", 
-                 #leafletOutput("casualty")
                  htmlOutput("casualty")
-        )
+        ),
+        tabPanel("By Month/Date/Time", 
+          fluidRow( 
+              htmlOutput("time"), heigh=160),
+          fluidRow(
+              htmlOutput("date"), heigh=160),
+          fluidRow(
+              htmlOutput("month"), heigh=160)
+          )
       )
     )
   )
