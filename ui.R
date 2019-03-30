@@ -14,16 +14,16 @@ fluidPage(
       img(src="r.jpg",width="30%"),
       
       selectizeInput(inputId = "year",
-                     label = "Select Year",
+                     label = h3("Select Year"),
                      choices = initial_year),
       
-      selectizeInput(inputId = "start",
-                     label = "Seletect Date From",
-                      choices = initial_date),
+      dateInput(inputId = "start",
+                     label = h3("Start Date"),
+                      value = initial_date),
                         
-      selectizeInput(inputId = "stop",
-                     label = "Select Date To",
-                     choices = initial_date[length(initial_date)])
+      dateInput(inputId = "stop",
+                     label = h3("End Date"),
+                     value = initial_date[length(initial_date)])
       
     ),
     mainPanel(

@@ -16,17 +16,19 @@ function(input, output, session){
           unique() %>% 
           sort()
 
-        updateSelectizeInput(
+        updateDateInput(
           session, "start",
-          choices = avail_dates,
-          selected = avail_dates[1])
+          value = avail_dates[1],
+          min = avail_dates[1],
+          max = avail_dates[length(avail_dates)])
         
 
-          updateSelectizeInput(
+        updateDateInput(
             session, "stop",
-            choices = avail_dates,
-            selected = avail_dates[length(avail_dates)])
-        
+            value = avail_dates[length(avail_dates)],
+            min = avail_dates[1],
+            max = avail_dates[length(avail_dates)])
+          
         
       }
     if (input$start > input$stop ){
