@@ -4,6 +4,7 @@ library(tmap)
 library(leaflet)
 library(googleVis)
 library(DT)
+library(ggmap)
 
 
 function(input, output, session){
@@ -48,6 +49,21 @@ function(input, output, session){
       summarise(number = n())
   })  
   
+  
+  output$plot = renderPlot({
+    collision_points <- filter_fct() %>% 
+      select(long, lat)
+    
+    ggplot() + geom_sf(data = neighborhood_df) +
+      geom_point(data = collision_points, aes(x=long, y=lat)) 
+    
+    api_key <- read.csv('google_key')[1,1]
+    register_google(key = api_key)  
+    nyc_map <- get_map(location = c(lon = -73.92, lat = 40.72), maptype = "terrain", zoom = 11)
+ 
+    ggmap(nyc_map) + 
+      geom_point(data = collision_points, aes(x=long, y=lat), alpha=0.1, color = "Red")
+  })
 
   output$map = renderLeaflet({
     new_df<- neighborhood_df
@@ -144,7 +160,7 @@ function(input, output, session){
        df <- filter_fct() %>% 
         group_by(., hour) %>% 
         summarise(Accidents=n()) %>% 
-         mutate(Accidents = round(Accidents/num_days$n))
+         mutate(Accidents = round(Accidents/num_days$n,1))
         
       hour_ticks <- c("00AM","01AM","02AM","03AM","04AM","05AM","06AM",
                       "07AM","08AM","09AM","10AM","11AM","12PM","01PM",

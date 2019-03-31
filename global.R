@@ -33,6 +33,8 @@ avail_dates <- collision %>%
   .$date %>% 
   sort()
 
+filtered_collision<- collision[1,]
+
 
 
 

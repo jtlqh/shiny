@@ -11,7 +11,7 @@ fluidPage(
   titlePanel("NYC Motor Vehicle Collision Reports"),
   sidebarLayout(
     sidebarPanel(
-      img(src="r.jpg",width="30%"),
+      img(src="r.png",width="20%"),
       
 
       dateInput(inputId = "start",
@@ -24,12 +24,17 @@ fluidPage(
     ),
     mainPanel(
       tabsetPanel(
-        tabPanel("Neighborhoods",
+        tabPanel("Map",
                  fluidRow(
                    leafletOutput("map")),
                  fluidRow(
-                   plotOutput("hist"))
+                   plotOutput("hist"),height=150)
         ),
+        tabPanel("Plot", 
+                 fluidRow( 
+                   plotOutput("plot"), heigh=400)
+        ),
+        
         tabPanel("Cause", 
                    DT::dataTableOutput("table"))
         ,
@@ -45,13 +50,11 @@ fluidPage(
         ),
         tabPanel("Month", 
                  fluidRow(
-                   htmlOutput("month"), heigh=160)
+                   htmlOutput("month"), heigh=400)
                  ),
         tabPanel("Time", 
                  fluidRow( 
-                   htmlOutput("time"), heigh=160)
-                 
-                 
+                   htmlOutput("time"), heigh=400)
         )
         
       )
