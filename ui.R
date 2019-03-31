@@ -13,44 +13,49 @@ fluidPage(
     sidebarPanel(
       img(src="r.jpg",width="30%"),
       
-      selectizeInput(inputId = "year",
-                     label = h3("Select Year"),
-                     choices = initial_year),
-      
+
       dateInput(inputId = "start",
                      label = h3("Start Date"),
-                      value = initial_date),
+                      value = as.Date('2019-01-01', format("%Y-%m-%d"))),
                         
       dateInput(inputId = "stop",
                      label = h3("End Date"),
-                     value = initial_date[length(initial_date)])
-      
+                     value = avail_dates[length(avail_dates)])
     ),
     mainPanel(
       tabsetPanel(
-        tabPanel("By Neighborhoods",
-          fluidRow(
-            leafletOutput("map")),
-          fluidRow(
-            plotOutput("hist"))
+        tabPanel("Neighborhoods",
+                 fluidRow(
+                   leafletOutput("map")),
+                 fluidRow(
+                   plotOutput("hist"))
         ),
-        tabPanel("By Cause", 
+        tabPanel("Cause", 
                    DT::dataTableOutput("table"))
         ,
-        tabPanel("By casauties", 
+        tabPanel("Casauties", 
                  htmlOutput("casualty")
         ),
-        tabPanel("By Month/Date/Time", 
-          fluidRow( 
-              htmlOutput("time"), heigh=160),
-          fluidRow(
-              htmlOutput("date"), heigh=160),
-          fluidRow(
-              htmlOutput("month"), heigh=160)
-          )
+        tabPanel("Day", 
+                 
+                 fluidRow(
+                   htmlOutput("day"), heigh=200),
+                 fluidRow(
+                   htmlOutput("holiday"), heigh=200)
+        ),
+        tabPanel("Month", 
+                 fluidRow(
+                   htmlOutput("month"), heigh=160)
+                 ),
+        tabPanel("Time", 
+                 fluidRow( 
+                   htmlOutput("time"), heigh=160)
+                 
+                 
+        )
+        
       )
     )
   )
 )
-
 

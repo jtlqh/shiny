@@ -1,7 +1,6 @@
 library(tidyverse)
 library(rgdal)
-#library(maptools)
-#library(gpclib)
+
 
 
 # downloading nyc neighborhood boundary dataset 
