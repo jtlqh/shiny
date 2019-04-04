@@ -33,7 +33,7 @@ acc_loc<- raw.df %>%
 sps <- acc_loc
 coordinates(sps) <- ~long + lat
 proj4string(sps) <- proj4string(neighborhood_df)
-acc_loc <- cbind(acc_loc, over(sps, neighborhood_df))
+acc_loc <- cbind(acc_loc, over(sps, neighborhood_df)) %>% select(-X.id)
 
 
 collision <- raw.df %>% 
@@ -75,25 +75,13 @@ collision <-bind_cols(collision, acc_loc) %>%
                   ifelse(contributing.factor.vehicle.2 == "80",
                          "unspecified",
                          contributing.factor.vehicle.2)
-           )))) %>% 
+           )))) 
+#%>% 
  
-  mutate(., year = format(as.Date(date), "%Y")) %>% 
-  mutate(., month = format(as.Date(date), "%m")) %>% 
-  mutate(., day = format(as.Date(date), "%u")) %>% 
-  mutate(., hour = strftime(time, "%H"))
-
-initial_year <- collision %>% 
-  select(., year) %>% 
-  unique() %>% 
-  .$year
-
-initial_date <- collision %>% 
-  filter(., year==initial_year[1]) %>% 
-  select(., date) %>% 
-  unique() %>% 
-  .$date %>% 
-  sort()
-
+#  mutate(., year = format(as.Date(date), "%Y")) %>% 
+#  mutate(., month = format(as.Date(date), "%m")) %>% 
+#  mutate(., day = format(as.Date(date), "%u")) %>% 
+#  mutate(., hour = strftime(time, "%H"))
 
 
 

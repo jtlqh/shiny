@@ -1,4 +1,5 @@
-
+library(RSQLite)
+library(data.table)
 library(shiny)
 library(tmap)
 library(leaflet)
@@ -7,39 +8,28 @@ library(DT)
 library(ggmap)
 
 
+
 function(input, output, session){
-    
-  observe({
-    updateDateInput(
-      session, "start",
-#      value = avail_dates[1],
-      min = avail_dates[1],
-      max = avail_dates[length(avail_dates)])
-
-    updateDateInput(
-      session, "stop",
-#      value = avail_dates[length(avail_dates)],
-      min = input$start + 1,
-      max = avail_dates[length(avail_dates)])
+  conn <- dbConnector(session, dbname = dbname)
   
-    if(input$stop < input$start ){
-      updateDateInput(
-        session, "stop",
-        value = input$start+1,
-        min = input$start+1,
-        max = avail_dates[length(avail_dates)])
-
-      }
+  observe({
+    if (input$dates[1] >= input$dates[2]){
+      showNotification(h4("End Date must be larger than Start Date in Date Range Field"), 
+                       duration = 5,
+                       closeButton = T)
+    }
   })
   
+
   filter_fct <- reactive({
-    req(input$start, input$stop,
-        input$start < input$stop
+    req(input$dates, 
+        input$dates[1] < input$dates[2]
     )
     
-    collision %>%
-      filter(date >= input$start & date <= input$stop)
-    
+    dbGetData(conn = conn,
+              tblname = tblname,
+              start_date = input$dates[1],
+              end_date = input$dates[2])  
   })
   
   neighborhood_fct <- reactive({
@@ -50,24 +40,33 @@ function(input, output, session){
   })  
   
   
+  
   output$plot = renderPlot({
+    
     collision_points <- filter_fct() %>% 
       select(long, lat)
+    n <- 2000
+    if (nrow(collision_points) > n) {
+      collision_points <- collision_points[1:n,]
+    } 
     
-    ggplot() + geom_sf(data = neighborhood_df) +
-      geom_point(data = collision_points, aes(x=long, y=lat)) 
-    
+
     api_key <- read.csv('google_key')[1,1]
     register_google(key = api_key)  
     nyc_map <- get_map(location = c(lon = -73.92, lat = 40.72), maptype = "terrain", zoom = 11)
- 
     ggmap(nyc_map) + 
-      geom_point(data = collision_points, aes(x=long, y=lat), alpha=0.1, color = "Red")
+      geom_point(data = collision_points, aes(x=long, y=lat), alpha = 0.3, color='Red')+
+      ggtitle( "Collision Locations") +
+      theme(plot.title = element_text(hjust = 0.5)) #centering title
   })
 
+  
+  
+  
   output$map = renderLeaflet({
     new_df<- neighborhood_df
-    new_df@data <- new_df@data %>% full_join(., neighborhood_fct(), id = neighborhood) %>% 
+    #new_df@data <- new_df@data %>% full_join(., neighborhood_fct(), id = neighborhood) %>%
+    new_df <- new_df %>% full_join(., neighborhood_fct(), id = neighborhood) %>% 
       mutate(., number=ifelse(is.na(number), 0 ,number))
     
     
@@ -129,168 +128,178 @@ function(input, output, session){
   
   
   
-    output$casualty <- renderGvis({
-      
-        filter_fct() %>% rename(., injured = number.of.persons.injured,
-                                      killed = number.of.persons.killed) %>% 
-          group_by(neighborhood, injured, killed) %>% 
-          summarise(num_killed = sum(killed), num_injured=sum(injured)) %>% 
-          group_by(neighborhood) %>% 
-          summarise(injured=sum(num_injured), killed=sum(num_killed)) %>% 
-        top_n(20, injured) %>% 
-        arrange(., desc(injured)) %>% 
-        gvisBarChart(., 
-                        options=list(
-                          title = "Injured & Killed from Motor Collision",
-                          width=600, height=400,
-                          isStacked = "true"))
-    })   
     
+  output$casualty <- renderGvis({
     
+    filter_fct() %>% rename(., injured = number.of.persons.injured,
+                            killed = number.of.persons.killed) %>% 
+      group_by(neighborhood, injured, killed) %>% 
+      summarise(num_killed = sum(killed), num_injured=sum(injured)) %>% 
+      group_by(neighborhood) %>% 
+      summarise(injured=sum(num_injured), killed=sum(num_killed)) %>% 
+      top_n(20, injured) %>% 
+      arrange(., desc(injured)) %>% 
+      gvisBarChart(., 
+                   options=list(
+                     title = "Injured & Killed from Motor Collision",
+                     width=600, height=400,
+                     isStacked = "true"))
+  })   
+  
     
+
     
+  output$time <- renderGvis({
     
-    output$time <- renderGvis({
-      
-      num_days<- filter_fct() %>% 
-        select(date) %>% 
-        unique() %>% 
-        summarise(n=n())
+    num_days<- filter_fct() %>% 
+      select(date) %>% 
+      unique() %>% 
+      summarise(n=n())
+    
+    df <- filter_fct() %>% 
+      mutate( hour = format(as.POSIXct.numeric(time, origin = "1970-01-01", tz="EDT"), "%H")) %>% 
+      group_by(., hour) %>% 
+      summarise(Accidents=n()) %>% 
+      mutate(Accidents = round(Accidents/num_days$n,1))
+    
+    hour_ticks <- c("00AM","01AM","02AM","03AM","04AM","05AM","06AM",
+                    "07AM","08AM","09AM","10AM","11AM","12PM","01PM",
+                    "02PM","03PM","04PM","05PM","06PM","07PM","08PM",
+                    "09PM","10PM","11PM")
+    df$hour <- hour_ticks[as.numeric(df$hour)+1]        
+    
+    gvisColumnChart(df, 
+                    options = list(
+                      title = "Accidents by Time",
+                      legend="none",
+                      width=600, height=300,
+                      hAxes="[{title:'Time', titleTextStyle: {color: 'black'}}]",
+                      vAxes="[{title:'Accidents', titleTextStyle: {color: 'black'}}]"
+                    )
+    )
+  })       
+  
+
+ holiday_fct <- reactive({
+   req(input$dates, 
+       input$dates[1] < input$dates[2]
+   )
+   
+   holidays %>% 
+     filter(date >= input$dates[1] & date <= input$dates[2]) 
+   
+ })   
         
-       df <- filter_fct() %>% 
-        group_by(., hour) %>% 
-        summarise(Accidents=n()) %>% 
-         mutate(Accidents = round(Accidents/num_days$n,1))
-        
-      hour_ticks <- c("00AM","01AM","02AM","03AM","04AM","05AM","06AM",
-                      "07AM","08AM","09AM","10AM","11AM","12PM","01PM",
-                      "02PM","03PM","04PM","05PM","06PM","07PM","08PM",
-                      "09PM","10PM","11PM")
-      df$hour <- hour_ticks[as.numeric(df$hour)+1]        
-      
-      gvisColumnChart(df, 
-                        options = list(
-                          title = "Accidents by Time",
-                          legend="none",
-                          width=600, height=300,
-                          hAxes="[{title:'Time', titleTextStyle: {color: 'black'}}]",
-                          vAxes="[{title:'Accidents', titleTextStyle: {color: 'black'}}]"
-                          )
-                        )
-      })   
+    
+  output$holiday <- renderGvis({
+    
+    num_holidays <-  holiday_fct() %>% 
+      group_by(holiday) %>% 
+      summarise(n=n())
+    
+    holiday_df <- filter_fct() %>% 
+      full_join(holiday_fct(), id = date) %>%
+      filter(!is.na(holiday)) %>% 
+      group_by(holiday) %>% 
+      summarise(accidents=n()) %>% 
+      full_join(num_holidays, id=holiday) %>% 
+      mutate(Accidents = round(accidents/n))  
+    
+    x <- holiday_fct() %>% .$holiday %>% unique()
+    
+    holiday_df <- holiday_df[match(x, holiday_df$holiday),] 
+
+    gvisColumnChart(holiday_df, xvar = 'holiday', yvar = 'Accidents' ,
+                    options = list(
+                      title = "Accidents on Holidays",
+                      legend="none",
+                      width=600, height=300,
+                      hAxes="[{title:'', titleTextStyle: {color: 'black'}}]",
+                      vAxes="[{title:'Accidents', titleTextStyle: {color: 'black'}}]"
+                      #     viewWindowMode:'explicit', viewWindow:{min:0, max:650}
+                      
+                    )
+    )
+                    
+  })
+  
+  
     
     
     
-    holiday_fct <- reactive({
-      date_to_comp <- holidays %>% 
-        filter(date >= input$start & date <= input$stop) 
-      
-      num_holidays<-  date_to_comp %>% 
-        group_by(holiday) %>% 
-        summarise(n=n())
-      
-      holiday_df <- filter_fct() %>% 
-        full_join(date_to_comp, id = date) %>%
-        filter(!is.na(holiday)) %>% 
-        group_by(holiday) %>% 
-        summarise(accidents=n()) %>% 
-        full_join(num_holidays, id=holiday) %>% 
-        mutate(Accidents = round(accidents/n))  
-      
-      x <- date_to_comp %>% .$holiday %>% unique()
-      
-      holiday_df[match(x, holiday_df$holiday),] 
-      
-    })
-    
-    output$holiday <- renderGvis({
-        gvisColumnChart(holiday_fct(), xvar = 'holiday', yvar = 'Accidents',
-                        options = list(
-                          title = "Accidents on Holidays",
-                          legend="none",
-                          width=600, height=300,
-                          hAxes="[{title:'Holiday', titleTextStyle: {color: 'black'}}]",
-                          vAxes="[{title:'Accidents', titleTextStyle: {color: 'black'}}]"
-                        #  viewWindowMode:'explicit', viewWindow:{min:0, max:650}}]"
-                         # viewWindow: {min:0, max:650}]"
-                        )
-        )
-    })
-    
-  day_fct <- reactive({
+  output$day <- renderGvis({
     day_ticks <- c("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
     
-    #weeks <- filter_fct() %>% 
-    #  select(date) %>% 
-    #  unique() %>% 
-    #  summarise(num_weeks = n()/7) 
-    weeks <- filter_fct() %>% 
+    collision_df <- filter_fct() %>% 
+      mutate(day=as.numeric(format(as.Date(date,origin = "1970-01-01"),"%u"))) #add a column for dayweek
+      
+    weeks <- collision_df %>% 
       select(date, day) %>% 
       unique() %>% 
       group_by(day) %>% 
       summarise(num_weeks = n()) 
     
-    filter_fct() %>% 
+    df <- collision_df %>% 
       group_by(day) %>% 
       summarise(Accidents = n()) %>% 
       # full_join(weeks, id=day) %>% 
-      mutate(Accidents = round(Accidents/weeks$num_weeks), 
-             day = day_ticks)
+      mutate(Accidents = round(Accidents/weeks$num_weeks))
+    df$day =  day_ticks[df$day]
+             
     
-  })    
-    
-    
-    output$day <- renderGvis({
-        gvisColumnChart(day_fct(), xvar = 'day', yvar = 'Accidents' ,
-                        options = list(
-                          title = "Accidents on Day Week",
-                          legend="none",
-                          width=600, height=300,
-                          hAxes="[{title:'Day Week', titleTextStyle: {color: 'black'}}]",
-                          vAxes="[{title:'Accidents', titleTextStyle: {color: 'black'}}]"
-                     #     viewWindowMode:'explicit', viewWindow:{min:0, max:650}
-                          
-                        )
-        )
-      
-
-    }) 
-    
+    gvisColumnChart(df, xvar = 'day', yvar = 'Accidents' ,
+                    options = list(
+                      title = "Accidents on Day Week",
+                      legend="none",
+                      width=600, height=300,
+                      hAxes="[{title:'', titleTextStyle: {color: 'black'}}]",
+                      vAxes="[{title:'Accidents', titleTextStyle: {color: 'black'}}]"
+                      #     viewWindowMode:'explicit', viewWindow:{min:0, max:650}
+                      
+                    )
+    )
+  }) 
+  
   
 
+  
+  
     
     
+  output$month <- renderGvis({
+    collision_df <- filter_fct() %>% 
+      mutate(month=as.numeric(format(as.Date(date, origin = "1970-01-01"),"%m")),
+             year=format(as.Date(date, origin = "1970-01-01"), "%Y"))
     
-    output$month <- renderGvis({
-      months_ <- filter_fct() %>% 
-        select(year,month) %>% 
-        unique() %>% 
-        group_by(month) %>% 
-        summarise(n=n())
-      
-      mon <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", 
-               "Aug", "Sep", "Oct", "Nov", "Dec")
-      
-      df <- filter_fct() %>% 
-        group_by(month) %>% 
-        summarise(accidents=n()) %>% 
-        full_join(months_,id=month) %>% 
-        filter(!is.na(accidents)) %>% 
-        mutate(Accidents = round(accidents/n)) 
-
-      df$month =  mon[as.numeric(df$month)]
-      
-        gvisColumnChart(df, xvar = "month", yvar = 'Accidents',
-                        options = list(
-                          title = "Accidents by the Month",
-                          legend="none",
-                          width=600, height=300,
-                          hAxes="[{title:'Month', titleTextStyle: {color: 'black'}}]",
-                          vAxes="[{title:'Accidents', titleTextStyle: {color: 'black'}}]"
-                        )
-        )
-    })
+    months_ <- collision_df %>% 
+      select(year,month) %>% 
+      unique() %>% 
+      group_by(month) %>% 
+      summarise(n=n())
     
+    mon <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", 
+             "Aug", "Sep", "Oct", "Nov", "Dec")
+    
+    df <- collision_df %>% 
+      group_by(month) %>% 
+      summarise(accidents = n()) %>% 
+      full_join(months_,id = month) %>% 
+      filter(!is.na(accidents)) %>% 
+      mutate(Accidents = round(accidents/n)) 
+    
+    df$month =  mon[df$month]
+    
+    gvisColumnChart(df, xvar = "month", yvar = 'Accidents',
+                    options = list(
+                      title = "Accidents by the Month",
+                      legend="none",
+                      width=600, height=300,
+                      hAxes="[{title:'', titleTextStyle: {color: 'black'}}]",
+                      vAxes="[{title:'Accidents', titleTextStyle: {color: 'black'}}]"
+                    )
+    )
+  })
+  
     
 }
 
