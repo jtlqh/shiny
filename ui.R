@@ -1,67 +1,69 @@
 library(shiny)
-library(tmap)
 library(leaflet)
 library(DT)
+library(shinydashboard)
 
 
 
-
-fluidPage(
-  titlePanel("NYC Motor Vehicle Collision Reports"),
-  sidebarLayout(
-    sidebarPanel(
-      img(src="r.png",width="20%"),
-      
-      p(
-        br()),
-      
-      
-      dateRangeInput("dates", label = "Please Select Date Range:",
-                     start = '2019-01-01',
-                     end = "2019-01-31",
-                     min = "2015-01-01",
-                     max = "2019-03-4"),
-      p("Interactive date range from Jan 2016 to Mar 2019")
-
-      
+dashboardPage(
+  dashboardHeader( #title = "NYC Motor Vehicle Collision Reports"),
+    title = "Li Dashboard"),
+  dashboardSidebar(
+ #   sidebarUserPanel("Li",image="r.png"),
+    sidebarMenu(
+      menuItem("Map", tabName = "map", icon = icon("map")),
+      menuItem("Cause", tabName ="cause", icon = icon("key")),
+      menuItem("Casualty", tabName = "casualty",  icon = icon("briefcase-medical")),
+      menuItem("Day", tabName = "day", icon = icon("calendar-times")),
+      menuItem("Month", tabName = "month", icon = icon("calendar-alt")),
+      menuItem("Time", tabName = "time",  icon = icon("hourglass")),
+      menuItem("Plot", tabName = "plot", icon = icon("image"))
     ),
-    mainPanel(
-      tabsetPanel(
-        tabPanel("Map",
-                 fluidRow(
-                   leafletOutput("map")),
-                 fluidRow(
-                   plotOutput("hist"))
-        ),
-        
-        tabPanel("Cause", 
-                   DT::dataTableOutput("table"))
-        ,
-        tabPanel("Casualty", 
-                 htmlOutput("casualty")
-        ),
-        tabPanel("Day", 
-                 
-                 fluidRow(
-                   htmlOutput("day"), heigh=200),
-                 fluidRow(
-                   htmlOutput("holiday"), heigh=200)
-        ),
-        tabPanel("Month", 
-                 fluidRow(
-                   htmlOutput("month"))
-                 ),
-        tabPanel("Time", 
-                 fluidRow( 
-                   htmlOutput("time"))
-        ),
-        tabPanel("Plot", 
-                 fluidRow( 
-                   plotOutput("plot"), heigh=400),
-                 fluidRow( 
-                   p("Limited to the first 2000 points",align="center"))
-        )
+    dateRangeInput("dates", label = "Select Date Range for Display",
+                       start = '2019-01-01',
+                       end = "2019-01-31",
+                       min = "2016-01-01",
+                       max = "2019-03-12")
+  ),
+  dashboardBody(
+    tags$head(
+      tags$link(rel = "stylesheet", type = "text/css", href = "custom.css")
+    ),
+    tabItems(
+      tabItem(tabName = "map",
+              fluidRow(
+                leafletOutput("map")),
+              fluidRow(
+                plotOutput("hist"))
+      ),
+      
+      tabItem(tabName = "cause", 
+              DT::dataTableOutput("table")
+      ),
+      tabItem(tabName = "casualty", 
+              htmlOutput("casualty")
+      ),
+      tabItem(tabName = "day", 
+              fluidRow(
+                htmlOutput("day"), heigh=200),
+              fluidRow(
+                htmlOutput("holiday"), heigh=200)
+      ),
+      tabItem(tabName = "month", 
+              fluidRow(
+                htmlOutput("month"))
+      ),
+      tabItem(tabName = "time", 
+              fluidRow( 
+                htmlOutput("time"))
+      ),
+      tabItem(tabName = "plot", 
+              fluidRow( 
+                plotOutput("plot"), heigh=400),
+              fluidRow( 
+                p("Limited to the first 2000 points",align="center"))
       )
+      
     )
   )
 )

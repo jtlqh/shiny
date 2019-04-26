@@ -2,7 +2,6 @@
 library(tidyverse)
 library(sf)
 
-#library(rsconnect)
 
 dbname = "./collisions.sqlite"
 tblname = "collisions"
@@ -14,16 +13,13 @@ download.file('http://data.beta.nyc//dataset/0ff93d2d-90ba-457c-9f7e-39e47bf2ac5
              './nybb.geojson' 
 )
 
-#loading neighborhood boundary dataset
+
 neighborhood_df <- st_read(dsn="./nybb.geojson") 
 
 
 
 holidays <- read_csv('holidays.csv') %>% 
   mutate(date=as.numeric(date))  
-
-
-
 
 
 

@@ -1,3 +1,4 @@
+
 library(RSQLite)
 library(data.table)
 library(shiny)
@@ -14,9 +15,7 @@ function(input, output, session){
   
   observe({
     if (input$dates[1] >= input$dates[2]){
-      showNotification(h4("End Date must be larger than Start Date in Date Range Field"), 
-                       duration = 5,
-                       closeButton = T)
+      showNotification(h4("End Date must be larger than Start Date in Date Range Field"))
     }
   })
   
@@ -41,7 +40,8 @@ function(input, output, session){
   
   
   
-  output$plot = renderPlot({
+  output$plot <- renderPlot({
+
     
     collision_points <- filter_fct() %>% 
       select(long, lat)
@@ -60,7 +60,7 @@ function(input, output, session){
       theme(plot.title = element_text(hjust = 0.5)) #centering title
   })
 
-  
+
   
   
   output$map = renderLeaflet({
