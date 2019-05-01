@@ -6,10 +6,11 @@ library(shinydashboard)
 
 
 dashboardPage(
-  dashboardHeader( #title = "NYC Motor Vehicle Collision Reports"),
-    title = "Li Dashboard"),
+  dashboardHeader( title = "NYC Auto Collision"),
+    #title = "Li Dashboard"),
   dashboardSidebar(
  #   sidebarUserPanel("Li",image="r.png"),
+    img(src="10crash1.600.jpg",width="100%"),
     sidebarMenu(
       menuItem("Map", tabName = "map", icon = icon("map")),
       menuItem("Cause", tabName ="cause", icon = icon("key")),
@@ -32,7 +33,7 @@ dashboardPage(
     tabItems(
       tabItem(tabName = "map",
               fluidRow(
-                leafletOutput("map")),
+                leafletOutput("map") ),
               fluidRow(
                 plotOutput("hist"))
       ),
@@ -45,9 +46,9 @@ dashboardPage(
       ),
       tabItem(tabName = "day", 
               fluidRow(
-                htmlOutput("day"), heigh=200),
+                htmlOutput("day")),
               fluidRow(
-                htmlOutput("holiday"), heigh=200)
+                htmlOutput("holiday"))
       ),
       tabItem(tabName = "month", 
               fluidRow(
@@ -59,7 +60,7 @@ dashboardPage(
       ),
       tabItem(tabName = "plot", 
               fluidRow( 
-                plotOutput("plot"), heigh=400),
+                plotOutput("plot", heigh=600,  width=600)),
               fluidRow( 
                 p("Limited to the first 2000 points",align="center"))
       )

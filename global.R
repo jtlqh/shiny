@@ -6,6 +6,11 @@ library(sf)
 dbname = "./collisions.sqlite"
 tblname = "collisions"
 
+#download.file(url='http://jt10000.com/lqh/collisions.sqlite',
+#              mode='wb',
+#              destfile=dbname 
+#)
+
 source("./helpers.R")
 
 # downloading nyc neighborhood boundary dataset 

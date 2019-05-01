@@ -142,7 +142,7 @@ function(input, output, session){
       gvisBarChart(., 
                    options=list(
                      title = "Injured & Killed from Motor Collision",
-                     width=600, height=400,
+                     width=700, height=400,
                      isStacked = "true"))
   })   
   
@@ -172,7 +172,7 @@ function(input, output, session){
                     options = list(
                       title = "Accidents by Time",
                       legend="none",
-                      width=600, height=300,
+                      width=700, height=300,
                       hAxes="[{title:'Time', titleTextStyle: {color: 'black'}}]",
                       vAxes="[{title:'Accidents', titleTextStyle: {color: 'black'}}]"
                     )
@@ -213,7 +213,7 @@ function(input, output, session){
                     options = list(
                       title = "Accidents on Holidays",
                       legend="none",
-                      width=600, height=300,
+                      width=700, height=300,
                       hAxes="[{title:'', titleTextStyle: {color: 'black'}}]",
                       vAxes="[{title:'Accidents', titleTextStyle: {color: 'black'}}]"
                       #     viewWindowMode:'explicit', viewWindow:{min:0, max:650}
@@ -251,7 +251,7 @@ function(input, output, session){
                     options = list(
                       title = "Accidents on Day Week",
                       legend="none",
-                      width=600, height=300,
+                      width=700, height=300,
                       hAxes="[{title:'', titleTextStyle: {color: 'black'}}]",
                       vAxes="[{title:'Accidents', titleTextStyle: {color: 'black'}}]"
                       #     viewWindowMode:'explicit', viewWindow:{min:0, max:650}
@@ -293,7 +293,7 @@ function(input, output, session){
                     options = list(
                       title = "Accidents by the Month",
                       legend="none",
-                      width=600, height=300,
+                      width=700, height=300,
                       hAxes="[{title:'', titleTextStyle: {color: 'black'}}]",
                       vAxes="[{title:'Accidents', titleTextStyle: {color: 'black'}}]"
                     )
