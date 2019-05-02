@@ -137,12 +137,12 @@ function(input, output, session){
       summarise(num_killed = sum(killed), num_injured=sum(injured)) %>% 
       group_by(neighborhood) %>% 
       summarise(injured=sum(num_injured), killed=sum(num_killed)) %>% 
-      top_n(20, injured) %>% 
+      top_n(30, injured) %>% 
       arrange(., desc(injured)) %>% 
       gvisBarChart(., 
                    options=list(
                      title = "Injured & Killed from Motor Collision",
-                     width=700, height=400,
+                     width=700, height=700,
                      isStacked = "true"))
   })   
   
